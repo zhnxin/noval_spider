@@ -1,0 +1,164 @@
+package core
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/parnurzeal/gorequest"
+	"github.com/sirupsen/logrus"
+)
+
+var (
+	ReqAgent = gorequest.New()
+)
+
+func init() {
+	ReqAgent.SetDoNotClearSuperAgent(true)
+}
+
+type (
+	LogFunc      func(format string, a ...interface{})
+	SpiderConfig struct {
+		Base      string
+		Start     string
+		IsNext    bool
+		Output    string
+		ValidNext *ValidNext
+		Selector  *CssSelector
+		cannel    context.CancelFunc
+		log       LogFunc
+	}
+	CssSelector struct {
+		Title   string
+		Content string
+		Next    string
+	}
+	ValidNext struct {
+		EndWith     string
+		NotContains string
+	}
+)
+
+func NewConfig(start, output string, isNext bool) *SpiderConfig {
+	return &SpiderConfig{
+		Start:  start,
+		Output: output,
+		IsNext: isNext,
+	}
+}
+
+func (c *SpiderConfig) InjectDefault(base string, next *ValidNext, selector *CssSelector) {
+	if c.Base == "" {
+		c.Base = base
+	}
+	if c.ValidNext == nil {
+		c.ValidNext = next
+	}
+	if c.Selector == nil {
+		c.Selector = selector
+	}
+	c.log = func(format string, a ...interface{}) { logrus.Infof(format, a...) }
+
+}
+func (c *SpiderConfig) SetLog(log LogFunc) {
+	c.log = log
+}
+
+func (c *SpiderConfig) reqeust(url string, writer io.Writer) (next string, err error) {
+	res, _, errs := ReqAgent.Get(url).End()
+	if len(errs) > 0 {
+		return "", fmt.Errorf("request error:%v", errs)
+	}
+	if res.StatusCode != 200 {
+		return "", fmt.Errorf("status code:%d", res.StatusCode)
+	}
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return "", err
+	}
+	if writer != nil {
+		if c.Selector.Title != "" {
+			doc.Find(c.Selector.Title).Each(func(i int, s *goquery.Selection) {
+				_, err = writer.Write([]byte(s.Text()))
+			})
+			if err != nil {
+				return "", err
+			}
+			if _, err = writer.Write([]byte{'\n'}); err != nil {
+				return "", err
+			}
+		}
+		doc.Find(c.Selector.Content).Each(func(i int, s *goquery.Selection) {
+			_, err = writer.Write([]byte(s.Text()))
+		})
+		if err != nil {
+			return "", err
+		}
+		if _, err = writer.Write([]byte{'\n'}); err != nil {
+			return "", err
+		}
+	}
+	next, _ = doc.Find(c.Selector.Next).Attr("href")
+	logrus.Debug(c.Selector.Next, ": ", next)
+	if c.ValidNext.NotContains != "" &&
+		strings.Contains(next, c.ValidNext.NotContains) {
+		next = ""
+	}
+	if c.ValidNext.EndWith != "" &&
+		!strings.HasSuffix(next, c.ValidNext.EndWith) {
+		next = ""
+	}
+	return
+}
+func (c *SpiderConfig) Stop() {
+	if c.cannel != nil {
+		c.cannel()
+	}
+}
+
+func (c *SpiderConfig) Process() (err error) {
+	url := c.Start
+	if c.IsNext {
+		url, err = c.reqeust(c.Base+url, nil)
+		if err != nil {
+			return
+		}
+		if url == "" {
+			c.log("there is no next page for %s\n", c.Start)
+			return
+		}
+	}
+	output, err := os.OpenFile(c.Output, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	if err != nil {
+		return fmt.Errorf("open output file %s:%v", c.Output, err)
+	}
+	defer output.Close()
+	count := 0
+	ctx, cannel := context.WithCancel(context.Background())
+	c.cannel = cannel
+	defer func() {
+		c.cannel = nil
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			url, err = c.reqeust(c.Base+url, output)
+			if err != nil {
+				return err
+			}
+			if url == "" {
+				return nil
+			}
+			count++
+			c.log("next: %d   %s\n", count, url)
+			c.Start = url
+			c.IsNext = true
+		}
+	}
+}
