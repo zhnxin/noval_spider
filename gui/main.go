@@ -21,10 +21,28 @@ var (
 
 type (
 	AppConfig struct {
+		Level   string
 		Default core.BaseConfig
 		Spider  []core.BaseConfig
 	}
 )
+
+func errorExitProcess(a fyne.App, w fyne.Window, err error) {
+	prog := dialog.NewProgress("Unexpected error", err.Error(), w)
+	go func() {
+		num := 0.0
+		for num < 1.0 {
+			prog.SetValue(1 - num)
+			time.Sleep(time.Millisecond * 100)
+			num += 0.05
+		}
+		prog.SetValue(0)
+		time.Sleep(time.Millisecond * 50)
+		prog.Hide()
+		a.Quit()
+	}()
+	prog.Show()
+}
 
 func init() {
 }
@@ -42,9 +60,9 @@ func main() {
 	backToMainContentChan := make(chan struct{})
 	configContainer := NewConfigContainer(nil, nil)
 	confBar := fyne.NewContainerWithLayout(layout.NewFixedGridLayout(fyne.NewSize(60, 48)),
-		widget.NewButton("Quit", func() { logrus.Info("退出 button tapped"); a.Quit() }),
+		widget.NewButton("Quit", func() { logrus.Debugf("退出 button tapped"); a.Quit() }),
 		widget.NewButtonWithIcon("", theme.FolderNewIcon(), func() {
-			logrus.Info("新增 button Tapped")
+			logrus.Debugf("新增 button Tapped")
 			configContainer.SetOnSubmit(func(conf *core.BaseConfig) {
 				spiderConf := conf.SpiderConfig()
 				spiderConf.InjectDefault(CONF.Default.Base, CONF.Default.ValidNext, CONF.Default.Selector)
@@ -54,9 +72,10 @@ func main() {
 			w.SetContent(configContainer.NewSpiderConfigForm(&CONF.Default))
 		}),
 		widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
-			logrus.Info("配置 button tapped")
+			logrus.Debugf("配置 button tapped")
 			configContainer.SetOnSubmit(func(conf *core.BaseConfig) {
 				CONF.Default = *conf
+				logrus.Debugf("更新配置:%+v", CONF.Default)
 				backToMainContentChan <- struct{}{}
 			})
 			w.SetContent(configContainer.NewConfigForm(&CONF.Default))
@@ -80,13 +99,19 @@ func main() {
 			return
 		}
 		defer file.Close()
+		CONF.Level = "INFO"
 		_, err = toml.DecodeReader(file, CONF)
 		if err != nil {
-			dialog.ShowError(err, w)
-			time.Sleep(5 * time.Second)
-			a.Quit()
+			errorExitProcess(a, w, err)
 			return
 		}
+		level, err := logrus.ParseLevel(CONF.Level)
+		if err != nil {
+			errorExitProcess(a, w, err)
+			return
+		}
+		logrus.SetLevel(level)
+
 		for _, c := range CONF.Spider {
 			func(cf core.BaseConfig) {
 				spiConf := cf.SpiderConfig()
@@ -104,7 +129,7 @@ func main() {
 			return
 		}
 		defer file.Close()
-		logrus.Info("save conf")
+		logrus.Debugf("%+v", CONF.Default)
 		err = toml.NewEncoder(file).Encode(CONF)
 		if err != nil {
 			logrus.Error(err)

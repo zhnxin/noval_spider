@@ -34,7 +34,7 @@ func NewConfigContainer(onsubmit callBack, oncancel func()) *SpiderConfigContain
 	cantainer.baseInput = widget.NewEntry()
 	cantainer.startInput = widget.NewEntry()
 	cantainer.outputInput = widget.NewEntry()
-	cantainer.isNext = widget.NewCheck("isNext", nil)
+	cantainer.isNext = widget.NewCheck("isNext", func(bool) {})
 	cantainer.validNextEndwith = widget.NewEntry()
 	cantainer.validNextNoContain = widget.NewEntry()
 	cantainer.selectorTitle = widget.NewEntry()
@@ -67,6 +67,7 @@ func (c *SpiderConfigContainer) SetOnCannel(fn func()) {
 }
 func (c *SpiderConfigContainer) getConf() *core.BaseConfig {
 	conf := core.NewBaseConfig(c.startInput.Text, c.outputInput.Text, c.isNext.Checked)
+	conf.Base = c.baseInput.Text
 	if c.validNextEndwith.Text != "" || c.validNextNoContain.Text != "" {
 		conf.ValidNext = &core.ValidNext{EndWith: c.validNextEndwith.Text, NotContains: c.validNextNoContain.Text}
 	}
