@@ -21,16 +21,19 @@ func init() {
 }
 
 type (
-	LogFunc      func(format string, a ...interface{})
-	SpiderConfig struct {
+	LogFunc    func(format string, a ...interface{})
+	BaseConfig struct {
 		Base      string
 		Start     string
 		IsNext    bool
 		Output    string
 		ValidNext *ValidNext
 		Selector  *CssSelector
-		cannel    context.CancelFunc
-		log       LogFunc
+	}
+	SpiderConfig struct {
+		BaseConfig
+		cannel context.CancelFunc
+		log    LogFunc
 	}
 	CssSelector struct {
 		Title   string
@@ -43,11 +46,21 @@ type (
 	}
 )
 
-func NewConfig(start, output string, isNext bool) *SpiderConfig {
-	return &SpiderConfig{
+func NewBaseConfig(start, output string, isNext bool) BaseConfig {
+	return BaseConfig{
 		Start:  start,
 		Output: output,
 		IsNext: isNext,
+	}
+}
+func (c *BaseConfig) SpiderConfig() *SpiderConfig {
+	return &SpiderConfig{
+		BaseConfig: *c,
+	}
+}
+func NewConfig(start, output string, isNext bool) *SpiderConfig {
+	return &SpiderConfig{
+		BaseConfig: NewBaseConfig(start, output, isNext),
 	}
 }
 

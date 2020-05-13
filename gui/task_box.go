@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"fyne.io/fyne"
+	"fyne.io/fyne/dialog"
 	"fyne.io/fyne/theme"
 	"fyne.io/fyne/widget"
 )
@@ -15,6 +16,7 @@ type (
 		container *widget.Box
 		taskBox   []*TaskBox
 		lock      *sync.Mutex
+		window    fyne.Window
 	}
 	TaskBox struct {
 		containerId int
@@ -29,15 +31,22 @@ type (
 	}
 )
 
-func NewContainer() (*TaskContainer, fyne.CanvasObject) {
+func NewContainer(w fyne.Window) (*TaskContainer, fyne.CanvasObject) {
 	container := &TaskContainer{
 		container: widget.NewVBox(),
 		taskBox:   []*TaskBox{},
 		lock:      new(sync.Mutex),
+		window:    w,
 	}
 	return container, widget.NewHScrollContainer(container.container)
 }
-
+func (c *TaskContainer) GetAllConf() []core.BaseConfig {
+	confs := make([]core.BaseConfig, len(c.taskBox))
+	for i, t := range c.taskBox {
+		confs[i] = t.config.BaseConfig
+	}
+	return confs
+}
 func (c *TaskContainer) Add(config *core.SpiderConfig) {
 	task := &TaskBox{
 		container:   c,
@@ -64,7 +73,6 @@ func (c *TaskContainer) Add(config *core.SpiderConfig) {
 			task.isRunning = true
 			task.startOrStop.SetIcon(theme.MediaPauseIcon())
 			task.startOrStop.Refresh()
-			//TODO deal with the error
 			go func() {
 				defer func() {
 					delBtn.Enable()
@@ -72,7 +80,10 @@ func (c *TaskContainer) Add(config *core.SpiderConfig) {
 					task.startOrStop.SetIcon(theme.MediaPlayIcon())
 					task.startOrStop.Refresh()
 				}()
-				_ = task.config.Process()
+				err := task.config.Process()
+				if err != nil {
+					dialog.ShowError(err, c.window)
+				}
 			}()
 		}
 	})
@@ -82,7 +93,6 @@ func (c *TaskContainer) Add(config *core.SpiderConfig) {
 	c.taskBox = append(c.taskBox, task)
 	c.container.Append(widget.NewHBox(task.startOrStop, delBtn, widget.NewVBox(task.nameLabel, task.statusLabel)))
 	c.container.Refresh()
-
 }
 
 func (c *TaskContainer) Remove(id int) {
