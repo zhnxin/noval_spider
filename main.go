@@ -2,7 +2,10 @@ package main
 
 import (
 	"noval_spider/core"
+	"noval_spider/gui"
 	"os"
+	"os/user"
+	"path"
 	"time"
 
 	"fyne.io/fyne"
@@ -16,7 +19,8 @@ import (
 )
 
 var (
-	CONF *AppConfig = &AppConfig{}
+	CONF           *AppConfig = &AppConfig{}
+	CONF_FILE_PATH            = ".noval_spider_conf.toml"
 )
 
 type (
@@ -44,6 +48,35 @@ func errorExitProcess(a fyne.App, w fyne.Window, err error) {
 	prog.Show()
 }
 
+func loadConfigFile(name string) (*AppConfig, error) {
+	u, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.OpenFile(path.Join(u.HomeDir, name), os.O_CREATE|os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	conf := &AppConfig{}
+	_, err = toml.DecodeReader(file, conf)
+	return conf, err
+}
+
+func saveConfile(conf *AppConfig, name string) error {
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+	file, err := os.OpenFile(path.Join(u.HomeDir, name), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	err = toml.NewEncoder(file).Encode(conf)
+	return err
+}
+
 func init() {
 }
 
@@ -53,12 +86,9 @@ func main() {
 	w := a.NewWindow("spider")
 	w.Resize(fyne.Size{Width: 400, Height: 300})
 	w.SetMaster()
-	taskM, container := NewContainer(w)
-	// conf := core.NewConfig("/YingShiShiJieDangShenTan/3254952.html", "YingShiShiJieDangShenTan.txt", false)
-	// conf.InjectDefault("https://www.soshuw.com", &core.ValidNext{EndWith: "html"}, &core.CssSelector{Title: "div.read_title>h1", Content: "div.content", Next: "div.pagego>a:last-child"})
-	// taskM.Add(conf)
+	taskM, container := gui.NewContainer(w)
 	backToMainContentChan := make(chan struct{})
-	configContainer := NewConfigContainer(nil, nil)
+	configContainer := gui.NewConfigContainer(nil, nil)
 	confBar := fyne.NewContainerWithLayout(layout.NewFixedGridLayout(fyne.NewSize(60, 48)),
 		widget.NewButton("Quit", func() { logrus.Debugf("退出 button tapped"); a.Quit() }),
 		widget.NewButtonWithIcon("", theme.FolderNewIcon(), func() {
@@ -91,19 +121,14 @@ func main() {
 		backToMainContentChan <- struct{}{}
 	})
 	go func() {
-		file, err := os.OpenFile(".noval_spider_conf.toml", os.O_CREATE|os.O_RDONLY, 0644)
-		if err != nil {
-			dialog.ShowError(err, w)
-			time.Sleep(5 * time.Second)
-			a.Quit()
-			return
-		}
-		defer file.Close()
-		CONF.Level = "INFO"
-		_, err = toml.DecodeReader(file, CONF)
+		var err error
+		CONF, err = loadConfigFile(CONF_FILE_PATH)
 		if err != nil {
 			errorExitProcess(a, w, err)
 			return
+		}
+		if CONF.Level == "" {
+			CONF.Level = "INFO"
 		}
 		level, err := logrus.ParseLevel(CONF.Level)
 		if err != nil {
@@ -111,7 +136,6 @@ func main() {
 			return
 		}
 		logrus.SetLevel(level)
-
 		for _, c := range CONF.Spider {
 			func(cf core.BaseConfig) {
 				spiConf := cf.SpiderConfig()
@@ -123,14 +147,7 @@ func main() {
 	}()
 	defer func() {
 		CONF.Spider = taskM.GetAllConf()
-		file, err := os.OpenFile(".noval_spider_conf.toml", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-		defer file.Close()
-		logrus.Debugf("%+v", CONF.Default)
-		err = toml.NewEncoder(file).Encode(CONF)
+		err := saveConfile(CONF, CONF_FILE_PATH)
 		if err != nil {
 			logrus.Error(err)
 		}

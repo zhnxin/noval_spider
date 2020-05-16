@@ -1,9 +1,12 @@
-package main
+package gui
 
 import (
 	"noval_spider/core"
+	"os/user"
+	"path"
 
 	"fyne.io/fyne/widget"
+	"github.com/sirupsen/logrus"
 )
 
 type (
@@ -83,7 +86,15 @@ func (c *SpiderConfigContainer) getConf() *core.BaseConfig {
 
 func (c *SpiderConfigContainer) restore(conf *core.BaseConfig) {
 	c.baseInput.SetText(conf.Base)
-	c.outputInput.SetText(conf.Output)
+	if conf.Output == "" {
+		u, err := user.Current()
+		if err == nil {
+			logrus.Info(path.Join(u.HomeDir, "Downloads"))
+			c.outputInput.SetText(path.Join(u.HomeDir, "Downloads"))
+		}
+	} else {
+		c.outputInput.SetText(conf.Output)
+	}
 	c.isNext.SetChecked(conf.IsNext)
 	c.startInput.SetText(conf.Start)
 
