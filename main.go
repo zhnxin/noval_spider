@@ -24,7 +24,7 @@ var (
 	CONF                  *AppConfig = &AppConfig{}
 	CONF_DIR                         = ".noval_spider"
 	USER_DIR              string
-	FontFileRegexpPattern = regexp.MustCompile(`.*\.tt[fc]`)
+	FontFileRegexpPattern = regexp.MustCompile(`.*\.ttf`)
 )
 
 type (
