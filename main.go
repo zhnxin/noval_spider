@@ -1,11 +1,13 @@
 package main
 
 import (
+	"io/ioutil"
 	"noval_spider/core"
 	"noval_spider/gui"
 	"os"
 	"os/user"
 	"path"
+	"regexp"
 	"time"
 
 	"fyne.io/fyne"
@@ -19,8 +21,10 @@ import (
 )
 
 var (
-	CONF           *AppConfig = &AppConfig{}
-	CONF_FILE_PATH            = ".noval_spider_conf.toml"
+	CONF                  *AppConfig = &AppConfig{}
+	CONF_DIR                         = ".noval_spider"
+	USER_DIR              string
+	FontFileRegexpPattern = regexp.MustCompile(`.*\.tt[fc]`)
 )
 
 type (
@@ -48,12 +52,8 @@ func errorExitProcess(a fyne.App, w fyne.Window, err error) {
 	prog.Show()
 }
 
-func loadConfigFile(name string) (*AppConfig, error) {
-	u, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	file, err := os.OpenFile(path.Join(u.HomeDir, name), os.O_CREATE|os.O_RDONLY, 0644)
+func loadConfigFile() (*AppConfig, error) {
+	file, err := os.OpenFile(path.Join(USER_DIR, CONF_DIR, "conf.toml"), os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -63,12 +63,8 @@ func loadConfigFile(name string) (*AppConfig, error) {
 	return conf, err
 }
 
-func saveConfile(conf *AppConfig, name string) error {
-	u, err := user.Current()
-	if err != nil {
-		return err
-	}
-	file, err := os.OpenFile(path.Join(u.HomeDir, name), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+func saveConfile(conf *AppConfig) error {
+	file, err := os.OpenFile(path.Join(USER_DIR, CONF_DIR, "conf.toml"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -78,6 +74,32 @@ func saveConfile(conf *AppConfig, name string) error {
 }
 
 func init() {
+	u, err := user.Current()
+	if err != nil {
+		logrus.Fatal("fail to read user dir")
+	}
+	USER_DIR = u.HomeDir
+	if _, err := os.Stat(path.Join(USER_DIR, CONF_DIR)); os.IsNotExist(err) {
+		err = os.Mkdir(path.Join(USER_DIR, CONF_DIR), 0644)
+		if err != nil {
+			logrus.Fatal("fail to create user dir")
+		}
+	}
+	fontDir := path.Join(USER_DIR, CONF_DIR, "font")
+	if _, err := os.Stat(fontDir); os.IsNotExist(err) {
+		logrus.Debug("font not set")
+		return
+	}
+	fontsFiles, err := ioutil.ReadDir(fontDir)
+	if err != nil {
+		logrus.Error("fail to read font directory")
+	}
+	for _, ff := range fontsFiles {
+		if FontFileRegexpPattern.MatchString(ff.Name()) {
+			os.Setenv("FYNE_FONT", path.Join(fontDir, ff.Name()))
+		}
+	}
+
 }
 
 func main() {
@@ -122,7 +144,7 @@ func main() {
 	})
 	go func() {
 		var err error
-		CONF, err = loadConfigFile(CONF_FILE_PATH)
+		CONF, err = loadConfigFile()
 		if err != nil {
 			errorExitProcess(a, w, err)
 			return
@@ -147,7 +169,7 @@ func main() {
 	}()
 	defer func() {
 		CONF.Spider = taskM.GetAllConf()
-		err := saveConfile(CONF, CONF_FILE_PATH)
+		err := saveConfile(CONF)
 		if err != nil {
 			logrus.Error(err)
 		}
