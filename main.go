@@ -106,7 +106,7 @@ func main() {
 	a := app.NewWithID("zhengxin.spider")
 	a.SetIcon(theme.FyneLogo())
 	w := a.NewWindow("spider")
-	w.Resize(fyne.Size{Width: 400, Height: 300})
+	w.Resize(fyne.Size{Width: 500, Height: 309})
 	w.SetMaster()
 	taskM, container := gui.NewContainer(w)
 	backToMainContentChan := make(chan struct{})
@@ -116,6 +116,9 @@ func main() {
 		widget.NewButtonWithIcon("", theme.FolderNewIcon(), func() {
 			logrus.Debugf("新增 button Tapped")
 			configContainer.SetOnSubmit(func(conf *core.BaseConfig) {
+				if conf == nil {
+					return
+				}
 				spiderConf := conf.SpiderConfig()
 				spiderConf.InjectDefault(CONF.Default.Base, CONF.Default.ValidNext, CONF.Default.Selector)
 				taskM.Add(spiderConf)
@@ -126,6 +129,9 @@ func main() {
 		widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
 			logrus.Debugf("配置 button tapped")
 			configContainer.SetOnSubmit(func(conf *core.BaseConfig) {
+				if conf == nil {
+					return
+				}
 				CONF.Default = *conf
 				logrus.Debugf("更新配置:%+v", CONF.Default)
 				backToMainContentChan <- struct{}{}
@@ -142,6 +148,19 @@ func main() {
 	configContainer.SetOnCannel(func() {
 		backToMainContentChan <- struct{}{}
 	})
+	editTaskConfigFunc := func(fn func(*core.BaseConfig), conf *core.BaseConfig) {
+		logrus.Debugf("更新task button tapped")
+		configContainer.SetOnSubmit(func(conf *core.BaseConfig) {
+			if conf == nil {
+				return
+			}
+			fn(conf)
+			logrus.Debugf("更新任务:%+v", conf)
+			backToMainContentChan <- struct{}{}
+		})
+		w.SetContent(configContainer.NewSpiderConfigForm(conf))
+	}
+	taskM.SetEditTaskFunc(editTaskConfigFunc)
 	go func() {
 		var err error
 		CONF, err = loadConfigFile()

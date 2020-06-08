@@ -9,10 +9,13 @@ import (
 	"fyne.io/fyne/dialog"
 	"fyne.io/fyne/theme"
 	"fyne.io/fyne/widget"
+	"github.com/sirupsen/logrus"
 )
 
 type (
-	TaskContainer struct {
+	TaskEditCallBack func(func(*core.BaseConfig), *core.BaseConfig)
+	TaskContainer    struct {
+		editFunc  TaskEditCallBack
 		container *widget.Box
 		taskBox   []*TaskBox
 		lock      *sync.Mutex
@@ -40,6 +43,9 @@ func NewContainer(w fyne.Window) (*TaskContainer, fyne.CanvasObject) {
 	}
 	return container, widget.NewHScrollContainer(container.container)
 }
+func (c *TaskContainer) SetEditTaskFunc(fn TaskEditCallBack) {
+	c.editFunc = fn
+}
 func (c *TaskContainer) GetAllConf() []core.BaseConfig {
 	confs := make([]core.BaseConfig, len(c.taskBox))
 	for i, t := range c.taskBox {
@@ -65,17 +71,39 @@ func (c *TaskContainer) Add(config *core.SpiderConfig) {
 		task.Remove()
 	})
 	delBtn.Enable()
+	editBtn := widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
+		if task.isRunning || c.editFunc == nil {
+			return
+		} else {
+			c.editFunc(func(conf *core.BaseConfig) {
+				if conf == nil {
+					return
+				}
+				logrus.Debugf("%+v", conf)
+				task.config.InjectDefault(conf.Base, conf.ValidNext, conf.Selector)
+				task.config.BaseConfig.Base = conf.Base
+				task.config.BaseConfig.Start = conf.Start
+				task.config.BaseConfig.Output = conf.Output
+				task.config.BaseConfig.IsNext = conf.IsNext
+				task.nameLabel.SetText(conf.Output)
+			}, &task.config.BaseConfig)
+		}
+
+	})
+	editBtn.Enable()
 	task.startOrStop = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), func() {
 		if task.isRunning {
 			task.config.Stop()
 		} else {
 			delBtn.Disable()
+			editBtn.Disable()
 			task.isRunning = true
 			task.startOrStop.SetIcon(theme.MediaPauseIcon())
 			task.startOrStop.Refresh()
 			go func() {
 				defer func() {
 					delBtn.Enable()
+					editBtn.Enable()
 					task.isRunning = false
 					task.startOrStop.SetIcon(theme.MediaPlayIcon())
 					task.startOrStop.Refresh()
@@ -91,7 +119,7 @@ func (c *TaskContainer) Add(config *core.SpiderConfig) {
 	defer c.lock.Unlock()
 	task.containerId = len(c.taskBox)
 	c.taskBox = append(c.taskBox, task)
-	c.container.Append(widget.NewHBox(task.startOrStop, delBtn, widget.NewVBox(task.nameLabel, task.statusLabel)))
+	c.container.Append(widget.NewHBox(task.startOrStop, editBtn, delBtn, widget.NewVBox(task.nameLabel, task.statusLabel)))
 	c.container.Refresh()
 }
 

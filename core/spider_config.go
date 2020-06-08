@@ -74,7 +74,9 @@ func (c *SpiderConfig) InjectDefault(base string, next *ValidNext, selector *Css
 	if c.Selector == nil {
 		c.Selector = selector
 	}
-	c.log = func(format string, a ...interface{}) { logrus.Infof(format, a...) }
+	if c.log == nil {
+		c.log = func(format string, a ...interface{}) { logrus.Infof(format, a...) }
+	}
 
 }
 func (c *SpiderConfig) SetLog(log LogFunc) {

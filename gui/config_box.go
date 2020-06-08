@@ -62,10 +62,10 @@ func (c *SpiderConfigContainer) SetOnSubmit(fn callBack) {
 func (c *SpiderConfigContainer) SetOnCannel(fn func()) {
 	c.cancelFunc = fn
 	if c.confForm != nil {
-		c.confForm.OnCancel = c.cancelFunc
+		c.confForm.OnCancel = func() { c.cancelFunc(); c.submitFunc(nil) }
 	}
 	if c.spiderForm != nil {
-		c.spiderForm.OnCancel = c.cancelFunc
+		c.spiderForm.OnCancel = func() { c.cancelFunc(); c.submitFunc(nil) }
 	}
 }
 func (c *SpiderConfigContainer) getConf() *core.BaseConfig {
