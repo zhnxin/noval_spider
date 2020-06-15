@@ -1,2 +1,8 @@
 == GUI爬虫 ==
 基于fyne
+
+=== 编译 ===
+[source,sh]
+----
+fyne package -os darwin -icon Icon.png
+----

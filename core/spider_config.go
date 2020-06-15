@@ -168,12 +168,13 @@ func (c *SpiderConfig) Process() (err error) {
 				return err
 			}
 			if url == "" {
+				c.IsNext = true
 				return nil
 			}
 			count++
 			c.log("next: %d   %s\n", count, url)
 			c.Start = url
-			c.IsNext = true
+			c.IsNext = false
 		}
 	}
 }
