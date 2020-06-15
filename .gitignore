@@ -2,3 +2,5 @@
 *.toml
 .DS_Store
 
+noval_spider
+noval_spider.app/*

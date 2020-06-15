@@ -13,8 +13,13 @@ import (
 )
 
 var (
-	ReqAgent = gorequest.New()
+	ReqAgent  = gorequest.New()
+	httpProxy = ""
 )
+
+func SetProxy(httpProxyUrl string) {
+	httpProxy = httpProxyUrl
+}
 
 func init() {
 	ReqAgent.SetDoNotClearSuperAgent(true)
@@ -84,7 +89,7 @@ func (c *SpiderConfig) SetLog(log LogFunc) {
 }
 
 func (c *SpiderConfig) reqeust(url string, writer io.Writer) (next string, err error) {
-	res, _, errs := ReqAgent.Get(url).End()
+	res, _, errs := ReqAgent.Proxy(httpProxy).Get(url).End()
 	if len(errs) > 0 {
 		return "", fmt.Errorf("request error:%v", errs)
 	}

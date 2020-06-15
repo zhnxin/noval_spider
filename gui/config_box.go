@@ -127,6 +127,7 @@ func (c *SpiderConfigContainer) NewConfigForm(conf *core.BaseConfig) *widget.For
 	c.confForm.Append("Valid Next EndWith", c.validNextEndwith)
 
 	c.confForm.Append("Valid Next NoContain", c.validNextNoContain)
+	c.confForm.Append("http proxy", c.startInput)
 	return c.confForm
 }
 func (c *SpiderConfigContainer) NewSpiderConfigForm(conf *core.BaseConfig) *widget.Form {

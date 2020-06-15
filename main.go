@@ -133,6 +133,7 @@ func main() {
 					return
 				}
 				CONF.Default = *conf
+				core.SetProxy(conf.Start)
 				logrus.Debugf("更新配置:%+v", CONF.Default)
 				backToMainContentChan <- struct{}{}
 			})
@@ -176,6 +177,7 @@ func main() {
 			errorExitProcess(a, w, err)
 			return
 		}
+		core.SetProxy(CONF.Default.Start)
 		logrus.SetLevel(level)
 		for _, c := range CONF.Spider {
 			func(cf core.BaseConfig) {
