@@ -30,6 +30,7 @@ var (
 type (
 	AppConfig struct {
 		Level   string
+		Proxy   string
 		Default core.BaseConfig
 		Spider  []core.BaseConfig
 	}
@@ -115,6 +116,7 @@ func main() {
 		widget.NewButton("Quit", func() { logrus.Debugf("退出 button tapped"); a.Quit() }),
 		widget.NewButtonWithIcon("", theme.FolderNewIcon(), func() {
 			logrus.Debugf("新增 button Tapped")
+			CONF.Default.Start = ""
 			configContainer.SetOnSubmit(func(conf *core.BaseConfig) {
 				if conf == nil {
 					return
@@ -133,10 +135,13 @@ func main() {
 					return
 				}
 				CONF.Default = *conf
-				core.SetProxy(conf.Start)
+				CONF.Proxy = conf.Start
+				CONF.Default.Start = ""
+				core.SetProxy(CONF.Proxy)
 				logrus.Debugf("更新配置:%+v", CONF.Default)
 				backToMainContentChan <- struct{}{}
 			})
+			CONF.Default.Start = CONF.Proxy
 			w.SetContent(configContainer.NewConfigForm(&CONF.Default))
 		}),
 	)
@@ -177,7 +182,7 @@ func main() {
 			errorExitProcess(a, w, err)
 			return
 		}
-		core.SetProxy(CONF.Default.Start)
+		core.SetProxy(CONF.Proxy)
 		logrus.SetLevel(level)
 		for _, c := range CONF.Spider {
 			func(cf core.BaseConfig) {
