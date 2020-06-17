@@ -121,6 +121,7 @@ func (c *SpiderConfigContainer) NewConfigForm(conf *core.BaseConfig) *widget.For
 		},
 	}
 	c.confForm.Append("Base", c.baseInput)
+	c.confForm.Append("Default Dir", c.outputInput)
 	c.confForm.Append("Title Css Selector", c.selectorTitle)
 	c.confForm.Append("Content Css Selector", c.selectorContent)
 	c.confForm.Append("Next Css Selector", c.selectorNext)

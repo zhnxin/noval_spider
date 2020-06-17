@@ -141,9 +141,9 @@ func (c *SpiderConfig) Stop() {
 }
 
 func (c *SpiderConfig) Process() (err error) {
-	url := c.Start
+	var url string
 	if c.IsNext {
-		url, err = c.reqeust(c.Base+url, nil)
+		url, err = c.reqeust(c.Base+c.Start, nil)
 		if err != nil {
 			return
 		}
@@ -151,6 +151,8 @@ func (c *SpiderConfig) Process() (err error) {
 			c.log("there is no next page for %s\n", c.Start)
 			return
 		}
+		c.Start = url
+		c.IsNext = false
 	}
 	output, err := os.OpenFile(c.Output, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
@@ -168,7 +170,7 @@ func (c *SpiderConfig) Process() (err error) {
 		case <-ctx.Done():
 			return
 		default:
-			url, err = c.reqeust(c.Base+url, output)
+			url, err = c.reqeust(c.Base+c.Start, output)
 			if err != nil {
 				return err
 			}
