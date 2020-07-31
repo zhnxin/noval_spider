@@ -28,12 +28,14 @@ func init() {
 type (
 	LogFunc    func(format string, a ...interface{})
 	BaseConfig struct {
-		Base      string
-		Start     string
-		IsNext    bool
-		Output    string
-		ValidNext *ValidNext
-		Selector  *CssSelector
+		Base           string
+		Start          string
+		IsNext         bool
+		Output         string
+		TitleDecorator string
+		CurrentChapter int
+		ValidNext      *ValidNext
+		Selector       *CssSelector
 	}
 	SpiderConfig struct {
 		BaseConfig
@@ -101,13 +103,19 @@ func (c *SpiderConfig) reqeust(url string, writer io.Writer) (next string, err e
 		return "", err
 	}
 	if writer != nil {
+		c.CurrentChapter++
 		if c.Selector.Title != "" {
 			doc.Find(c.Selector.Title).Each(func(i int, s *goquery.Selection) {
-				_, err = writer.Write([]byte(s.Text()))
+				if c.TitleDecorator != "" {
+					_, err = fmt.Fprintf(writer, c.TitleDecorator, c.CurrentChapter, s.Text())
+				} else {
+					_, err = writer.Write([]byte(s.Text()))
+				}
 			})
 			if err != nil {
 				return "", err
 			}
+
 			if _, err = writer.Write([]byte{'\n'}); err != nil {
 				return "", err
 			}
@@ -148,7 +156,7 @@ func (c *SpiderConfig) Process() (err error) {
 			return
 		}
 		if url == "" {
-			c.log("there is no next page for %s\n", c.Start)
+			c.log("no next page for %s\n", c.Start)
 			return
 		}
 		c.Start = url
@@ -159,7 +167,6 @@ func (c *SpiderConfig) Process() (err error) {
 		return fmt.Errorf("open output file %s:%v", c.Output, err)
 	}
 	defer output.Close()
-	count := 0
 	ctx, cannel := context.WithCancel(context.Background())
 	c.cannel = cannel
 	defer func() {
@@ -178,8 +185,7 @@ func (c *SpiderConfig) Process() (err error) {
 				c.IsNext = true
 				return nil
 			}
-			count++
-			c.log("next: %d   %s\n", count, url)
+			c.log("next: %d   %s\n", c.CurrentChapter, url)
 			c.Start = url
 			c.IsNext = false
 		}

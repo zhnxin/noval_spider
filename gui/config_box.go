@@ -24,6 +24,7 @@ type (
 		validNextNoContain *widget.Entry
 
 		selectorTitle   *widget.Entry
+		titleDecorator  *widget.Entry
 		selectorContent *widget.Entry
 		selectorNext    *widget.Entry
 
@@ -38,6 +39,7 @@ func NewConfigContainer(onsubmit callBack, oncancel func()) *SpiderConfigContain
 	cantainer.startInput = widget.NewEntry()
 	cantainer.outputInput = widget.NewEntry()
 	cantainer.isNext = widget.NewCheck("isNext", func(bool) {})
+	cantainer.titleDecorator = widget.NewEntry()
 	cantainer.validNextEndwith = widget.NewEntry()
 	cantainer.validNextNoContain = widget.NewEntry()
 	cantainer.selectorTitle = widget.NewEntry()
@@ -71,6 +73,7 @@ func (c *SpiderConfigContainer) SetOnCannel(fn func()) {
 func (c *SpiderConfigContainer) getConf() *core.BaseConfig {
 	conf := core.NewBaseConfig(c.startInput.Text, c.outputInput.Text, c.isNext.Checked)
 	conf.Base = c.baseInput.Text
+	conf.TitleDecorator = c.titleDecorator.Text
 	if c.validNextEndwith.Text != "" || c.validNextNoContain.Text != "" {
 		conf.ValidNext = &core.ValidNext{EndWith: c.validNextEndwith.Text, NotContains: c.validNextNoContain.Text}
 	}
@@ -97,6 +100,7 @@ func (c *SpiderConfigContainer) restore(conf *core.BaseConfig) {
 	}
 	c.isNext.SetChecked(conf.IsNext)
 	c.startInput.SetText(conf.Start)
+	c.titleDecorator.SetText(conf.TitleDecorator)
 
 	if conf.ValidNext != nil {
 		c.validNextEndwith.SetText(conf.ValidNext.EndWith)
@@ -147,6 +151,7 @@ func (c *SpiderConfigContainer) NewSpiderConfigForm(conf *core.BaseConfig) *widg
 	c.spiderForm.Append("Start", c.startInput)
 	c.spiderForm.Append("Is Next", c.isNext)
 	c.spiderForm.Append("Title Css Selector", c.selectorTitle)
+	c.spiderForm.Append("Title Decorator", c.titleDecorator)
 	c.spiderForm.Append("Content Css Selector", c.selectorContent)
 	c.spiderForm.Append("Next Css Selector", c.selectorNext)
 	c.spiderForm.Append("Valid Next EndWith", c.validNextEndwith)
