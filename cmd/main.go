@@ -17,9 +17,11 @@ import (
 type (
 	ConfigPackage struct {
 		Base      string
+		Proxy     string
 		ValidNext core.ValidNext
 		Selector  core.CssSelector
 		Config    []core.SpiderConfig
+		TocConfig []core.TocSpiderConfig
 	}
 )
 
@@ -70,6 +72,9 @@ func main() {
 	if err != nil {
 		logrus.Fatalln(err)
 	}
+	if CONFIG.Proxy != "" {
+		core.SetProxy(CONFIG.Proxy)
+	}
 	CONFIG.ReOrg()
 	logrus.SetFormatter(&logrus.TextFormatter{
 		TimestampFormat: time.RFC3339,
@@ -96,6 +101,19 @@ func main() {
 			}
 		}(c)
 	}
+	// for _, c := range CONFIG.TocConfig {
+	// 	wait.Add(1)
+	// 	go func(con core.TocSpiderConfig) {
+	// 		defer func() {
+	// 			wait.Done()
+	// 		}()
+	// 		if err := con.Process(); err != nil {
+	// 			logrus.Errorln(err)
+	// 		} else {
+	// 			logrus.Info("complete: ", con.Output)
+	// 		}
+	// 	}(c)
+	// }
 	go func() {
 		wait.Wait()
 		close(configChan)

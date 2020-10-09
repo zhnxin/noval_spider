@@ -65,6 +65,12 @@ func (c *BaseConfig) SpiderConfig() *SpiderConfig {
 		BaseConfig: *c,
 	}
 }
+func (c *BaseConfig) TocSpiderConfig() *TocSpiderConfig {
+	return &TocSpiderConfig{
+		BaseConfig: *c,
+		log:        func(format string, a ...interface{}) { logrus.Infof(format, a...) },
+	}
+}
 func NewConfig(start, output string, isNext bool) *SpiderConfig {
 	return &SpiderConfig{
 		BaseConfig: NewBaseConfig(start, output, isNext),
@@ -132,11 +138,11 @@ func (c *SpiderConfig) reqeust(url string, writer io.Writer) (next string, err e
 	}
 	next, _ = doc.Find(c.Selector.Next).Attr("href")
 	logrus.Debug(c.Selector.Next, ": ", next)
-	if c.ValidNext.NotContains != "" &&
+	if c.ValidNext != nil && c.ValidNext.NotContains != "" &&
 		strings.Contains(next, c.ValidNext.NotContains) {
 		next = ""
 	}
-	if c.ValidNext.EndWith != "" &&
+	if c.ValidNext != nil && c.ValidNext.EndWith != "" &&
 		!strings.HasSuffix(next, c.ValidNext.EndWith) {
 		next = ""
 	}
