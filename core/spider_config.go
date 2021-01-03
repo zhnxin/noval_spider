@@ -168,7 +168,7 @@ func (c *SpiderConfig) Process() (err error) {
 		c.Start = url
 		c.IsNext = false
 	}
-	output, err := os.OpenFile(c.Output, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	output, err := os.OpenFile(c.Output, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return fmt.Errorf("open output file %s:%v", c.Output, err)
 	}

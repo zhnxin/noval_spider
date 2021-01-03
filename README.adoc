@@ -5,4 +5,4 @@
 [source,sh]
 ----
 fyne package -os darwin -icon Icon.png
-----
+----go build -gcflags=all="-N -l"
